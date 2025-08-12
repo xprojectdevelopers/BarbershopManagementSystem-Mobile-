@@ -1,12 +1,10 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../../Utils/supabase';
 import '../../../global.css';
 
 export default function RegisterScreen({ navigation }) {
-
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fullname, setFullName] = useState('');
@@ -14,35 +12,71 @@ export default function RegisterScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleRegister = async ()  => {
-    if (! fullname || !email || !password || !confirmPassword) {
-      alert('Please fill in all fields');
+  // Track if component is mounted
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    // On unmount, set isMounted to false
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  const handleRegister = async () => {
+    if (!fullname || !email || !password || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
     if (password !== confirmPassword) {
-      alert('Passwords do not match');
+      Alert.alert('Error', 'Passwords do not match');
       return;
     }
 
-    const {data, error} = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          fullname,
+    try {
+      // Signup user with metadata
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            fullname,
+          },
         },
-      },
-    })
+      });
 
-    if (error) {
-      Alert.alert('Registration Error', error.message);
-    } else {
+      if (signUpError) {
+        if (signUpError.message.includes("already registered")) {
+          if (!isMounted.current) return;
+          Alert.alert('Registration Error', 'Email is already registered. Please log in.');
+        } else {
+          if (!isMounted.current) return;
+          Alert.alert('Registration Error', signUpError.message);
+        }
+        return;
+      }
+
+      // Insert full name into profiles table
+      const userId = signUpData.user.id;
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{ id: userId, full_name: fullname, email: email }]);
+
+      if (profileError) {
+        if (!isMounted.current) return;
+        Alert.alert('Profile Error', profileError.message);
+        return;
+      }
+
+      if (!isMounted.current) return;
+      Alert.alert('Registration Successful', 'You can now log in with your account!');
       navigation.navigate('Login');
-      Alert.alert('Registration Successful', 'Please check your email to confirm your account.');
+    } catch (error) {
+      if (!isMounted.current) return;
+      Alert.alert('Unexpected Error', error.message);
     }
-  }
-  
+  };
 
   return (
     <View className="flex-1 items-center justify-center bg-gray-100 p-4">
@@ -86,10 +120,10 @@ export default function RegisterScreen({ navigation }) {
               className="absolute right-3 top-4"
               onPress={() => setShowPassword(!showPassword)}
             >
-              <MaterialCommunityIcons 
-                name={showPassword ? "eye-off" : "eye"} 
-                size={20} 
-                color="#6b7280" 
+              <MaterialCommunityIcons
+                name={showPassword ? "eye-off" : "eye"}
+                size={20}
+                color="#6b7280"
               />
             </TouchableOpacity>
           </View>
@@ -108,10 +142,10 @@ export default function RegisterScreen({ navigation }) {
               className="absolute right-3 top-4"
               onPress={() => setShowConfirmPassword(!showConfirmPassword)}
             >
-              <MaterialCommunityIcons 
-                name={showConfirmPassword ? "eye-off" : "eye"} 
-                size={20} 
-                color="#6b7280" 
+              <MaterialCommunityIcons
+                name={showConfirmPassword ? "eye-off" : "eye"}
+                size={20}
+                color="#6b7280"
               />
             </TouchableOpacity>
           </View>

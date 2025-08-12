@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Alert, Image } from "react-native";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../../Utils/supabase';
 import '../../../global.css';
@@ -93,7 +93,7 @@ export default function LoginScreen({ navigation }) {
             className="flex-1 items-center justify-center p-4 border-2 border-gray-200 rounded-xl"
             onPress={() => {}}
           >
-            <MaterialCommunityIcons name="google" size={24} color="#DB4437" />
+           <Image source={require('../../../assets/Images and Logos/Logos/googleLogo.png')} style={{ width: 24, height: 24 }}/>
           </TouchableOpacity>
         </View>
 
